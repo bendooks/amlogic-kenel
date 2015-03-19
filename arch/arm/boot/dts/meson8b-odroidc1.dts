@@ -62,3 +62,29 @@
 &uart_AO {
 	status = "okay";
 };
+
+
+/ {
+	ethernet@c9410000 {
+		compatible = "snps,dwmac";
+		reg = <0xC9410000 0x2000>;
+		interrrupts = <0 8 1>;	/* no 40 */
+		interrupt-names = "macirq";
+		clocks = <&clk81>;
+		clock-names = "stmmaceth";
+		mac-address = [00 00 00 00 00 00];/* Filled in by U-Boot */
+		snps,multicast-filter-bins = <256>;
+		snps,perfect-filter-entries = <128>;
+
+/* per-board setup */
+		phy-mode = "rgmii";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy: phy@0 {
+		     reg = <0>;
+	      };
+
+	};
+};
