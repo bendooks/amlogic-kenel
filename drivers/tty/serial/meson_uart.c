@@ -14,6 +14,10 @@
  *
  */
 
+#if defined(CONFIG_SERIAL_MESON_BREAK) && defined(CONFIG_MAGIC_SYSRQ)
+#define SUPPORT_SYSRQ
+#endif
+
 #include <linux/clk.h>
 #include <linux/console.h>
 #include <linux/delay.h>
@@ -83,6 +87,8 @@
 #define AML_UART_PORT_NUM		6
 #define AML_UART_DEV_NAME		"ttyAML"
 
+/* fake flag for handling breaks */
+#define AML_RX_BREAK			(1 << 31)
 
 static struct uart_driver meson_uart_driver;
 
@@ -179,16 +185,25 @@ static void meson_uart_start_tx(struct uart_port *port)
 		uart_write_wakeup(port);
 }
 
+#ifdef CONFIG_SERIAL_MESON_BREAK
+static inline bool meson_detect_break(u32 flags, u32 ch)
+{
+	return (flags & AML_UART_FRAME_ERR && ch == 0);
+}
+#else
+static inline bool meson_detect_break(u32 flags, u32 ch) { return false; }
+#endif
+
 static void meson_receive_chars(struct uart_port *port)
 {
 	struct tty_port *tport = &port->state->port;
 	char flag;
-	u32 status, ch, mode;
+	u32 ostatus, status, ch, mode;
 
 	do {
 		flag = TTY_NORMAL;
 		port->icount.rx++;
-		status = readl(port->membase + AML_UART_STATUS);
+		ostatus = status = readl(port->membase + AML_UART_STATUS);
 
 		if (status & AML_UART_ERR) {
 			if (status & AML_UART_TX_FIFO_WERR)
@@ -215,6 +230,14 @@ static void meson_receive_chars(struct uart_port *port)
 
 		ch = readl(port->membase + AML_UART_RFIFO);
 		ch &= 0xff;
+
+		if (meson_detect_break(ostatus, ch)) {
+			uart_handle_break(port);
+			continue;
+		};
+
+		if (uart_handle_sysrq_char(port, ch))
+			continue;
 
 		if ((status & port->ignore_status_mask) == 0)
 			tty_insert_flip_char(tport, ch, flag);

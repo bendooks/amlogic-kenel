@@ -209,6 +209,14 @@ config SERIAL_MESON
 	  This enables the driver for the on-chip UARTs of the Amlogic
 	  MesonX processors.
 
+
+config SERIAL_MESON_BREAK
+	bool "Enable break/sysrq emulation"
+	depends on SERIAL_MESON
+	help
+	  Say Y here to add support for detection of the BREAK character
+	  by checking for a zero byte being received with framing errors.
+
 config SERIAL_MESON_CONSOLE
 	bool "Support for console on meson"
 	depends on SERIAL_MESON=y
