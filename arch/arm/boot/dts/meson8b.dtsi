@@ -160,13 +160,39 @@
 			compatible = "amlogic,meson8b-rtc";
 			reg = <0xc8100740 0x14>;
 			resets = <&reset RESET_RTC>;
-			status = "disabled";
+ 			status = "disabled";
 		};
 
 		clkc: clock-controller@c1104000 {
 			#clock-cells = <1>;
 			compatible = "amlogic,meson8b-clkc";
 			reg = <0xc1108000 0x4>, <0xc1104000 0x460>;
+		};
+
+		// usb phys at CBUS_REG_ADDR(0x2200) and 0x2208
+
+		usbphys: usb-phy0@c1108800 {
+			compatible = "amlogic,meson-usb-phy";
+			reg = <0xc1108800 0x40>;
+			clocks = <&clk81>;
+			resets = <&reset RESET_USB_OTG>;
+			nr-phys = <2>;
+
+			phy0: usb-phy@0 { 
+			};
+			phy1: usb-phy@1 {
+			};
+		};
+
+		usb0: usb-controller@0xc9040000 {
+			compatible = "";
+			reg = <0xc9040000 0x10000>;
+			
+		};
+
+		usb1: usb-controller@0xc90C0000 {
+			compatible = "";
+			reg = <0xc90C0000 0x10000>;
 		};
 
 		pinctrl_cbus: pinctrl@c1109880 {
