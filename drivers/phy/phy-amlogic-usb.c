@@ -72,6 +72,7 @@ static int amlogic_usb_power_on(struct phy *_phy)
 // USB1 clock is CBUS1 0x1051  bit 22
 // USB0 bridge is CBUS1 0x1052 bit 9
 // USB1 bridge is CBUS1 0x1052 bit 8
+// USB general is CBUS1 0x1051 bit 26
 
 static void hack_enable_clocks(void)
 {
@@ -82,8 +83,14 @@ static void hack_enable_clocks(void)
 	if (WARN_ON(!reg))
 		return;
 
-	writel(readl(reg + 0x0) | (3 << 21), reg + 0x0);
+	pr_info("%s: regs %08x, %08x (before)\n",
+		__func__, readl(reg + 0x0), readl(reg + 0x4));
+
+	writel(readl(reg + 0x0) | (3 << 21) | (1 << 26), reg + 0x0);
 	writel(readl(reg + 0x4) | (3 << 8),  reg + 0x4);
+
+	pr_info("%s: regs %08x, %08x (after)\n",
+		__func__, readl(reg + 0x0), readl(reg + 0x4));	
 }
 
 static int amlogic_usb_init(struct phy *_phy)
