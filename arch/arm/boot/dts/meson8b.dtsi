@@ -188,16 +188,20 @@
 
 		usb0: usb-controller@0xc9040000 {
 			compatible = "snps,dwc2";
+			clocks = <&clk81>;
 			reg = <0xc9040000 0x80000>;
 			interrupts = <0 30 1>;
 			phy = <&usbphy0>;
+			dr_mode = "host";
 		};
 
 		usb1: usb-controller@0xc90C0000 {
 			compatible = "";
 			reg = <0xc90c0000 0x80000>;
 			interrupts = <0 31 1>;
+			clocks = <&clk81>;
 			phy = <&usbphy1>;
+			dr_mode = "otg";
 		};
 
 		pinctrl_cbus: pinctrl@c1109880 {
