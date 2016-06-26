@@ -7,6 +7,10 @@
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
  *
+ * Note, the PHY block can contain more than one PHY, but at least on the
+ * S805 the PHY looks like it has one clock and reset control, therefore we
+ * put them both into the same device-node to avoid multiple phy-nodes trying
+ * to reset a single peripheral node.
  */
 
 #include <linux/module.h>
@@ -15,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/io.h>
+#include <linux/clk.h>
 #include <linux/reset.h>
 
 #include <linux/usb/phy_companion.h>
@@ -45,8 +50,9 @@ struct amlogic_usbphy {
 struct amlogic_usbphys {
 	void __iomem		*regs;
 	int			nr_phys;
+	struct clk		*clk;		/* main/general clock */
 	struct device		*dev;
-	struct reset_control	*reset;
+	struct reset_control	*reset;		/* main reset control */
 	struct amlogic_usbphy	phys[];
 };
 
@@ -58,12 +64,14 @@ static int amlogic_usb_phy_power(struct amlogic_usbphy *phy, bool to)
 static int amlogic_usb_power_off(struct phy *_phy)
 {
 	struct amlogic_usbphy *phy = phy_get_drvdata(_phy);
+	dev_info(phy->parent->dev, "phy%d: power-off\n", phy->id);
 	return amlogic_usb_phy_power(phy, false);
 }
 
 static int amlogic_usb_power_on(struct phy *_phy)
 {
 	struct amlogic_usbphy *phy = phy_get_drvdata(_phy);
+	dev_info(phy->parent->dev, "phy%d: power-on\n", phy->id);	
 	return amlogic_usb_phy_power(phy, true);
 }
 
@@ -179,6 +187,10 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 	if (IS_ERR(phys->reset))
 		return PTR_ERR(phys->reset);
 
+	phys->clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(phys->clk))
+		dev_warn(dev, "no main clock supplied\n");
+  
 	reset_control_reset(phys->reset);
 
 	for_each_child_of_node(dev->of_node, np) {
@@ -198,6 +210,11 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 			continue;
 		}
 
+		// todo - do we need to get the usb general clock
+		// here?
+		// of_clk_get_by_name(np, "main")
+		// of_clk_get_by_name(np, "ddr")
+	
 		phy->id = ch;
 		phy->parent = phys;
 		phy->regs = phys->regs + (ch * 0x20);
