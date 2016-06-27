@@ -173,25 +173,32 @@
 		usbphys: usb-phy0@c1108800 {
 			compatible = "amlogic,meson-usb-phy";
 			reg = <0xc1108800 0x40>;
-			clocks = <&clk81>;
+			clocks = <&clkc CLKID_CLK81>;
 			resets = <&reset RESET_USB_OTG>;
 			nr-phys = <2>;
 
+			#size-cells=<1>;
+			#address-cells=<0>;
+		       
 			usbphy0: usb-phy@0 {
-			      reg = <0>;
+				#phy-cells = <0>;
+				reg = <0>;
 			};
 
 			usbphy1: usb-phy@1 {
-			      reg = <1>;
+				#phy-cells = <0>;
+				reg = <1>;
 			};
 		};
 
 		usb0: usb-controller@0xc9040000 {
 			compatible = "snps,dwc2";
-			clocks = <&clk81>;
+			clocks = <&clkc CLKID_CLK81>;
+			clock-names = "otg";
 			reg = <0xc9040000 0x80000>;
 			interrupts = <0 30 1>;
-			phy = <&usbphy0>;
+			phys = <&usbphy0>;
+			phy-names = "usb2-phy";
 			dr_mode = "host";
 		};
 
@@ -199,8 +206,10 @@
 			compatible = "";
 			reg = <0xc90c0000 0x80000>;
 			interrupts = <0 31 1>;
-			clocks = <&clk81>;
-			phy = <&usbphy1>;
+			clocks = <&clkc CLKID_CLK81>;
+			clock-names = "otg";
+			phys = <&usbphy1>;
+			phy-names = "usb2-phy";
 			dr_mode = "otg";
 		};
 
