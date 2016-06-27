@@ -20,6 +20,7 @@
 #include <linux/of.h>
 #include <linux/io.h>
 #include <linux/clk.h>
+#include <linux/gpio.h>
 #include <linux/reset.h>
 
 #include <linux/usb/phy_companion.h>
@@ -44,6 +45,7 @@ struct amlogic_usbphy {
 	struct amlogic_usbphys	*parent;
 	struct device_node	*node;
 	struct phy		*phy;
+	struct gpio_desc	*reset;
 	void __iomem		*regs;
 	unsigned int		id;
 };	
@@ -234,7 +236,12 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 		// here?
 		// of_clk_get_by_name(np, "main")
 		// of_clk_get_by_name(np, "ddr")
-	
+
+		if (ch == 1) {
+			phy->reset = devm_gpiod_get_optional(dev, "reset1",
+							     GPIOD_OUT_LOW);
+		}
+
 		phy->id = ch;
 		phy->parent = phys;
 		phy->regs = phys->regs + (ch * 0x20);
