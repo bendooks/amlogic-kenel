@@ -26,15 +26,16 @@
 
 #define PHYREG_CONFIG		(0x00)
 #define PHYREG_CTRL		(0x04)
+#define PHYREG_ADP_BC		(0x0C)
 
 #define CONFIG_CLK_EN		BIT(0)
 #define CONFIG_POWEROFF		(0x3 << 12)
 #define CONFIG_CLK_SET(__clk)	((__clk) << 1)
 #define CONFIG_CLK_DIV(__div)	((__div) << 4)
-#define CONFIG_CLK_32KALT	BIT(11)
+#define CONFIG_CLK_32KALT	BIT(15)
 
 #define CTRL_CLK_DETECTED	BIT(8)
-#define CTRL_POR		BIT(16)
+#define CTRL_POR		BIT(15)
 #define CTRL_FSEL(__fs)		((__fs) << 22)
 #define CTRL_FSEL_MASK		(7 << 22)
 
@@ -128,6 +129,12 @@ static int amlogic_usb_init(struct phy *_phy)
 	msleep(1);
 	dev_info(phys->dev, "phy%d: ctrl=%08x\n", phy->id, reg);
 
+	if (phy->id == 1) {
+		reg = readl(phy->regs + PHYREG_ADP_BC);
+		reg |= BIT(16);  // ADA_EANBLE;
+		writel(reg, phy->regs + PHYREG_ADP_BC);
+	}
+
 	if (!(readl(phy->regs + PHYREG_CTRL) & CTRL_CLK_DETECTED))
 		dev_warn(phys->dev, "phy%d: no clock detected\n", phy->id);
 
@@ -144,15 +151,15 @@ static const struct phy_ops phy_ops = {
 static struct phy *amlogic_phy_xlate(struct device *dev,
 				     struct of_phandle_args *args)
 {
+	struct amlogic_usbphys *phys = dev_get_drvdata(dev);  
 	struct device_node *np = args->np;
-	struct amlogic_usbphys *phys;
 	int i;
 
-	phys = dev_get_drvdata(dev);
-
-	for (i = 0; i < phys->nr_phys; i++)
+	for (i = 0; i < phys->nr_phys; i++) {
+		dev_info(dev, "match %d: %p, %p\n", i, phys->phys[i].node, np);
 		if (phys->phys[i].node == np)
 			return phys->phys[i].phy;
+	}
 	
 	return ERR_PTR(-ENODEV);
 }
@@ -168,7 +175,13 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 	int nr_phy;
 	size_t sz;
 	
-	nr_phy = of_get_child_count(pdev->dev.of_node); 
+	nr_phy = of_get_child_count(pdev->dev.of_node);
+	if (nr_phy <= 0) {
+		dev_err(dev, "no phys specified (%d)\n", nr_phy);
+		return -EINVAL;
+	}
+	
+	dev_info(dev, "%d phys\n", nr_phy);
 	
 	sz = sizeof(*phys) + sizeof(struct amlogic_usbphy) * nr_phy;
 	phys = devm_kzalloc(&pdev->dev, sz, GFP_KERNEL);
@@ -176,16 +189,21 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	phys->dev = dev;
+	phys->nr_phys = nr_phy;
 	platform_set_drvdata(pdev, phys);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	phys->regs = devm_ioremap_resource(dev, res);
-	if (IS_ERR(phys->regs))
+	if (IS_ERR(phys->regs)) {
+		dev_err(dev, "no registers specified\n");
 		return PTR_ERR(phys->regs);
+	}
 
 	phys->reset = devm_reset_control_get(dev, NULL);
-	if (IS_ERR(phys->reset))
+	if (IS_ERR(phys->reset)) {
+		dev_warn(dev, "no reset controller\n");
 		return PTR_ERR(phys->reset);
+	}
 
 	phys->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(phys->clk))
@@ -203,6 +221,8 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 			continue;
 		}
 
+		dev_info(dev, "attaching phy %d\n", ch);
+		
 		phy = &phys->phys[ch];
 		phy->phy = devm_phy_create(dev, NULL, &phy_ops);
 		if (IS_ERR(phy->phy)) {
@@ -228,7 +248,7 @@ static int amlogic_usb_probe(struct platform_device *pdev)
 		return PTR_ERR(provider);
 	}
 
-	
+	dev_info(dev, "added phys\n");
 	return 0;
 }
 
