@@ -347,6 +347,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 	hsotg->phy = devm_phy_get(hsotg->dev, "usb2-phy");
 	if (IS_ERR(hsotg->phy)) {
 		ret = PTR_ERR(hsotg->phy);
+		dev_info(hsotg->dev, "did not find usb2-phy %d\n", ret);
 		switch (ret) {
 		case -ENODEV:
 		case -ENOSYS:
@@ -364,6 +365,7 @@ static int dwc2_lowlevel_hw_init(struct dwc2_hsotg *hsotg)
 		hsotg->uphy = devm_usb_get_phy(hsotg->dev, USB_PHY_TYPE_USB2);
 		if (IS_ERR(hsotg->uphy)) {
 			ret = PTR_ERR(hsotg->uphy);
+			dev_info(hsotg->dev, "did not find usbphy %d\n", ret);
 			switch (ret) {
 			case -ENODEV:
 			case -ENXIO:
