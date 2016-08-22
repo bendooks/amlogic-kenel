@@ -45,7 +45,10 @@ static inline void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
  */
 static inline int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time)
 {
-	*time = rtc_tm_to_time64(tm);
+	time64_t tt = rtc_tm_to_time64(tm);
+
+	WARN_ON(tt > ~(0UL));
+	*time = tt;
 
 	return 0;
 }
